@@ -8,6 +8,7 @@ const Container = styled.div`
   height: 100vh;
   background-color: #ccffff;
 `
+
 const Board = styled.div`
   align-items: center;
   width: 66vh;
