@@ -1,6 +1,8 @@
 import type { NextPage } from 'next'
 import styled from 'styled-components'
 
+const COLOR = ['white', 'black']
+
 const Container = styled.div`
   display: flex;
   align-items: center;
@@ -17,31 +19,40 @@ const Board = styled.div`
   border: 1vh solid black;
 `
 
-const Sqaure = styled.div`
+const Sqaure = styled.div<{ num: number }>`
   display: inline-block;
   width: 8vh;
   height: 8vh;
+  font-size: 12vh;
+  line-height: 4.5vh;
   vertical-align: bottom;
-  background-repeat: no-repeat;
-  background-position: -50vh 0;
-  background-size: 70vh 5vh;
+  text-align: center;
+  color: ${({ num }) => (0 === num || num === 1 ? COLOR[num] : '')};
   border: 0.2vh solid black;
 `
 
 const Home: NextPage = () => {
   const board = [
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
+    [9, 9, 9, 9, 9, 9, 9, 9],
+    [9, 9, 9, 9, 9, 9, 9, 9],
+    [9, 9, 9, 9, 9, 9, 9, 9],
+    [9, 9, 9, 0, 1, 9, 9, 9],
+    [9, 9, 9, 1, 0, 9, 9, 9],
+    [9, 9, 9, 9, 9, 9, 9, 9],
+    [9, 9, 9, 9, 9, 9, 9, 9],
+    [9, 9, 9, 9, 9, 9, 9, 9],
   ]
   return (
     <Container>
-      <Board>{board.map((row, y) => row.map((num, x) => <Sqaure key={`${x}-${y}`} />))}</Board>
+      <Board>
+        {board.map((row, y) =>
+          row.map((num, x) => (
+            <Sqaure key={`${x}-${y}`} num={num}>
+              {0 <= num && num <= 1 ? '●' : ''}
+            </Sqaure>
+          ))
+        )}
+      </Board>
     </Container>
   )
 }
