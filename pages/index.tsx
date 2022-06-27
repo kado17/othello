@@ -1,7 +1,8 @@
 import axios from 'axios'
 import type { NextPage } from 'next'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import styled from 'styled-components'
+//import {io} from 'socket.io-client'
 
 const COLOR = ['white', 'black']
 
@@ -55,12 +56,21 @@ const Home: NextPage = () => {
     board: number[][]
   }
 
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      a()
+    }, 1000)
+    return () => {
+      clearInterval(intervalId)
+    }
+  }, [])
+
   const board_init = [
     [9, 9, 9, 9, 9, 9, 9, 9],
     [9, 9, 9, 9, 9, 9, 9, 9],
     [9, 9, 9, 9, 9, 9, 9, 9],
-    [1, 1, 1, 0, 1, 0, 1, 0],
-    [0, 0, 0, 1, 0, 1, 0, 1],
+    [9, 9, 9, 0, 1, 9, 9, 9],
+    [9, 9, 9, 1, 0, 9, 9, 9],
     [9, 9, 9, 9, 9, 9, 9, 9],
     [9, 9, 9, 9, 9, 9, 9, 9],
     [9, 9, 9, 9, 9, 9, 9, 9],
@@ -86,17 +96,16 @@ const Home: NextPage = () => {
   const b = (x: number, y: number) => {
     const data = { y: y, x: x }
     console.log(data)
-    const board_a = JSON.parse(JSON.stringify(board))
-    board_a[y][x] = 0
-    setBoard(board_a)
 
-    /*const url = axios
+    const url = axios
       .post('http://localhost:8000/api/disk', data)
 
       // thenで成功した場合の処理
       .then((r) => {
-        console.log('res:', r)
-      })*/
+        console.log('res:', r.data)
+        const a: number[][] = r.data.a
+        setBoard(a)
+      })
   }
 
   return (
