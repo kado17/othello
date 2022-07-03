@@ -1,13 +1,14 @@
-import axios from 'axios'
 import type { NextPage } from 'next'
 import { useEffect, useState } from 'react'
+import { io } from 'socket.io-client'
 import styled from 'styled-components'
-//import {io} from 'socket.io-client'
 
 const COLOR = ['white', 'black']
+const URL = 'http://localhost:8000'
 
 const Container = styled.div`
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
   height: 100vh;
@@ -17,7 +18,7 @@ const Container = styled.div`
 const Board = styled.div`
   align-items: center;
   width: 66vh;
-  height: 66vh;
+  height: 65vh;
   background-color: #0d0;
   border: 1vh solid black;
 `
@@ -35,7 +36,7 @@ const Sqaure = styled.div<{ num: number }>`
   border: 0.2vh solid black;
 `
 
-const White_disk = styled.div`
+const WhiteDisk = styled.div`
   position: absolute;
   top: 0;
   right: 0;
@@ -47,84 +48,229 @@ const White_disk = styled.div`
   background-color: white;
   border-radius: 50%;
 `
-const Black_disk = styled(White_disk)`
+
+const BlackDisk = styled(WhiteDisk)`
   background-color: black;
 `
 
-const Home: NextPage = () => {
-  interface b {
-    board: number[][]
+const ColumnArea = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 3vh;
+  font-size: 0;
+
+  /* border: solid 1vh black; */
+`
+
+const GameStateShow = styled.div`
+  height: 8vh;
+  margin: 0 0 1vh;
+  font-size: 3vh;
+  font-weight: bold;
+  line-height: 7vh;
+  color: black;
+  text-align: center;
+`
+
+const PlayerColor = styled.div`
+  width: 24vh;
+  height: 8vh;
+  margin: 24vh 0 0;
+  font-size: 3vh;
+  line-height: 7vh;
+  color: black;
+  text-align: center;
+  background-color: white;
+  border: solid 0.5vh black;
+`
+
+const OpponentColor = styled(PlayerColor)`
+  margin: 0 0 24vh;
+  color: whitesmoke;
+  text-align: center;
+  background-color: black;
+  border: solid 0.5vh white;
+`
+
+const LogArea = styled.textarea`
+  width: 20vh;
+  height: 40vh;
+  margin-bottom: 25vh;
+  font-size: 2vh;
+  resize: none;
+  border-radius: 4px;
+`
+const Modal = styled.div<{ isShow: boolean }>`
+  position: absolute;
+  top: 30%;
+  right: 30%;
+  bottom: 30%;
+  left: 30%;
+  z-index: 2;
+  display: ${({ isShow }) => (isShow ? 'None' : 'flex')};
+  flex-direction: column;
+  background: whitesmoke;
+
+  div {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    margin-top: 15%;
   }
+`
+
+const ModalLable = styled.label`
+  margin-top: 8%;
+  font-size: 275%;
+  color: black;
+  text-align: center;
+`
+
+const ModalBack = styled.div<{ isShow: boolean }>`
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  display: ${({ isShow }) => (isShow ? '' : 'None')};
+  width: 100%;
+  height: 100%;
+  background-color: rgb(0 0 0 / 50%);
+`
+const InputBox = styled.input.attrs({ type: 'text', maxLength: 6 })`
+  width: 60%;
+  height: 40%;
+  font-size: 120%;
+  border: solid 0.1vh black;
+  border-radius: 0.2em;
+
+  :focus {
+    border: transparent 0.1vh solid;
+    outline: 0;
+    box-shadow: 0 0 0 0.2vh rgb(33 150 243) inset;
+  }
+`
+
+const InputButton = styled.button`
+  width: 15%;
+  height: 40%;
+  margin-left: 2%;
+  font-size: 120%;
+  background-color: #ddd;
+  border: 0.1vh solid black;
+  border-radius: 1.5em;
+
+  :hover {
+    background-color: #ccc;
+  }
+`
+const AlertPrompt = styled.div`
+  position: fixed;
+  top: 0;
+  z-index: 5;
+  display: None;
+  justify-content: center;
+  width: 45%;
+  height: 10%;
+  margin-top: 2vh;
+  background-color: red;
+  border-radius: 1.5em;
+  animation: slide-in 1.6s;
+  @keyframes slide-in {
+    0% {
+      opacity: 0;
+      transform: translateY(-64px);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+`
+
+const socket = io(URL, {
+  reconnection: false,
+})
+const Home: NextPage = () => {
+  const boardInit = Array.from(new Array(8), () => new Array(8).fill(9))
+  const [board, setBoard] = useState(boardInit)
+  const [userName, setUserName] = useState('匿名')
+  const [isClickedStart, setIsClickedStart] = useState(false)
+  const [isShowModal, setIsShowModal] = useState(true)
 
   useEffect(() => {
-    const intervalId = setInterval(() => {
-      a()
-    }, 1000)
-    return () => {
-      clearInterval(intervalId)
-    }
+    socket.on('board', (msg) => {
+      console.log(msg)
+      const b = msg.board
+      setBoard(b)
+    })
+    socket.on('result', (msg) => {
+      console.log(msg)
+    })
   }, [])
-
-  const board_init = [
-    [9, 9, 9, 9, 9, 9, 9, 9],
-    [9, 9, 9, 9, 9, 9, 9, 9],
-    [9, 9, 9, 9, 9, 9, 9, 9],
-    [9, 9, 9, 0, 1, 9, 9, 9],
-    [9, 9, 9, 1, 0, 9, 9, 9],
-    [9, 9, 9, 9, 9, 9, 9, 9],
-    [9, 9, 9, 9, 9, 9, 9, 9],
-    [9, 9, 9, 9, 9, 9, 9, 9],
-  ]
-  const [board, setBoard] = useState(board_init)
-
-  const a = () => {
-    const url = axios
-      .get('http://localhost:8000/api/test')
-
-      // thenで成功した場合の処理
-      .then((r) => {
-        const a: number[][] = r.data.board
-        console.log('ステータスコード:', r)
-        setBoard(a)
-      })
-      // catchでエラー時の挙動を定義
-      .catch((err) => {
-        console.log('err:', err)
-      })
-  }
-
   const b = (x: number, y: number) => {
     const data = { y: y, x: x }
     console.log(data)
+    socket.emit('putDisk', { x: x, y: y })
+  }
 
-    const url = axios
-      .post('http://localhost:8000/api/disk', data)
-
-      // thenで成功した場合の処理
-      .then((r) => {
-        console.log('res:', r.data)
-        const a: number[][] = r.data.a
-        setBoard(a)
-      })
+  const setUserInfo = () => {
+    setIsClickedStart(true)
+    setIsShowModal(false)
+    console.log('CL')
+    /* socket.on('connect', () => {
+      console.log(`socket.connectの中身：`)
+      console.log(socket.id)
+    })*/
   }
 
   return (
     <Container>
-      <Board>
-        {board.map((row, y) =>
-          row.map((num, x) => (
-            <Sqaure
-              key={`${x}-${y}`}
-              num={num}
-              onClick={() => {
-                b(x, y)
-              }}
-            >
-              {0 === num ? <White_disk /> : num === 1 ? <Black_disk /> : ''}
-            </Sqaure>
-          ))
-        )}
-      </Board>
+      <AlertPrompt />
+      <ModalBack isShow={isShowModal}>
+        <Modal isShow={isClickedStart}>
+          <ModalLable>ユーザー名を入力してください</ModalLable>
+          <div>
+            <InputBox
+              id="inputName"
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+            />
+            <InputButton id="inputName" type="submit" onClick={setUserInfo}>
+              Start
+            </InputButton>
+          </div>
+        </Modal>
+      </ModalBack>
+      <ColumnArea>
+        <OpponentColor>黒 - 未着席さん</OpponentColor>
+        <PlayerColor>白 - 未着席さん</PlayerColor>
+      </ColumnArea>
+      <ColumnArea>
+        <GameStateShow>白の手番です。</GameStateShow>
+        <Board>
+          {board.map((row, y) =>
+            row.map((num, x) => (
+              <Sqaure
+                key={`${x}-${y}`}
+                num={num}
+                onClick={() => {
+                  b(x, y)
+                }}
+              >
+                {num === 1 ? <WhiteDisk /> : num === 1 ? <BlackDisk /> : ''}
+              </Sqaure>
+            ))
+          )}
+        </Board>
+      </ColumnArea>
+      <ColumnArea>
+        <LogArea readOnly={true} />
+      </ColumnArea>
     </Container>
   )
 }
