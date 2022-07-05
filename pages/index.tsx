@@ -58,10 +58,9 @@ const ColumnArea = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+  height: 75vh;
   margin: 0 3vh;
   font-size: 0;
-
-  /* border: solid 1vh black; */
 `
 
 const GameStateShow = styled.div`
@@ -74,20 +73,21 @@ const GameStateShow = styled.div`
   text-align: center;
 `
 
-const PlayerColor = styled.div`
-  width: 24vh;
+const PlayerWhite = styled.div`
+  width: 26vh;
   height: 8vh;
-  margin: 24vh 0 0;
+  margin: 25vh 0;
   font-size: 3vh;
   line-height: 7vh;
   color: black;
   text-align: center;
   background-color: white;
   border: solid 0.5vh black;
+  border-radius: 0.5em;
 `
 
-const OpponentColor = styled(PlayerColor)`
-  margin: 0 0 24vh;
+const PlayerBlack = styled(PlayerWhite)`
+  margin: 9vh 0 24vh;
   color: whitesmoke;
   text-align: center;
   background-color: black;
@@ -95,9 +95,10 @@ const OpponentColor = styled(PlayerColor)`
 `
 
 const LogArea = styled.textarea`
-  width: 20vh;
+  width: 22vh;
   height: 40vh;
-  margin-bottom: 25vh;
+  margin-top: 9vh;
+  margin-bottom: 10vh;
   font-size: 2vh;
   resize: none;
   border-radius: 4px;
@@ -112,6 +113,7 @@ const Modal = styled.div<{ isShow: boolean }>`
   display: ${({ isShow }) => (isShow ? 'None' : 'flex')};
   flex-direction: column;
   background: whitesmoke;
+  border-radius: 1.5em;
 
   div {
     display: flex;
@@ -124,7 +126,7 @@ const Modal = styled.div<{ isShow: boolean }>`
 
 const ModalLable = styled.label`
   margin-top: 8%;
-  font-size: 275%;
+  font-size: 270%;
   color: black;
   text-align: center;
 `
@@ -137,9 +139,10 @@ const ModalBack = styled.div<{ isShow: boolean }>`
   left: 0;
   z-index: 1;
   display: ${({ isShow }) => (isShow ? '' : 'None')};
+  display: None;
   width: 100%;
   height: 100%;
-  background-color: rgb(0 0 0 / 50%);
+  background-color: rgb(0 0 0 / 80%);
 `
 const InputBox = styled.input.attrs({ type: 'text', maxLength: 6 })`
   width: 60%;
@@ -192,14 +195,59 @@ const AlertPrompt = styled.div`
     }
   }
 `
+const ButtonArea = styled(ColumnArea)`
+  height: 15vh;
+  padding: 1vh;
+  background-color: #dff;
+  border: solid 0.1vh;
+  border-radius: 1.5em;
+`
+
+const EntryButton = styled.button`
+  width: 20vh;
+  height: 8vh;
+  font-size: 4vh;
+  background-color: #ddd;
+
+  /* c0c0c0 暗い #e6e6fa 明るめ */
+  border-bottom: solid 0.6vh #555;
+  border-radius: 1.5em;
+
+  :active {
+    border-bottom: solid 0.1vh #555;
+    box-shadow: 0 0 0.1vh rgb(0 0 0 / 30%);
+  }
+`
+const UserInfoArea = styled.div`
+  position: fixed;
+  bottom: 1vh;
+  left: 1vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0.7vh;
+  background-color: whitesmoke;
+  border-left: solid 0.5vh gray;
+  box-shadow: 0 3px 5px rgb(0 0 0 / 22%);
+`
+
+const UserInfoLabel = styled.label`
+  margin: 0.1vh 0;
+  font-size: 3vh;
+`
+
+const ButtonLabel = styled.label`
+  margin: 0.5vh 0;
+  font-size: 2vh;
+`
 
 const Home: NextPage = () => {
   const boardInit = Array.from(new Array(8), () => new Array(8).fill(9))
   const [board, setBoard] = useState(boardInit)
-  const [userName, setUserName] = useState('匿名')
+  const [userInfo, setUserInfo] = useState({ userName: '匿名', userState: '観戦者' })
   const [isClickedStart, setIsClickedStart] = useState(false)
   const [isShowModal, setIsShowModal] = useState(true)
   const [isSocketCond, setIsSocketCond] = useState<null | boolean>(null)
+  // eslint-disable-next-line
   const socket = useRef<Socket>(null!)
   useEffect(() => {
     socket.current = io(URL, {
@@ -234,7 +282,7 @@ const Home: NextPage = () => {
     socket.current.emit('putDisk', { x: x, y: y })
   }
 
-  const setUserInfo = () => {
+  const registerUserInfo = () => {
     setIsClickedStart(true)
     setIsShowModal(false)
     console.log('CL')
@@ -251,21 +299,19 @@ const Home: NextPage = () => {
         <Modal isShow={isClickedStart}>
           <ModalLable>
             {isSocketCond === null
-              ? '接続中'
+              ? 'サーバーに接続中'
               : isSocketCond
               ? 'ユーザー名を入力してください'
               : 'サーバーに接続できません'}
           </ModalLable>
-          {isSocketCond === null ? (
-            ''
-          ) : isSocketCond ? (
+          {isSocketCond ? (
             <div>
               <InputBox
                 id="inputName"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
+                value={userInfo.userName}
+                onChange={(e) => setUserInfo({ ...userInfo, userName: e.target.value })}
               />
-              <InputButton id="inputName" type="submit" onClick={setUserInfo}>
+              <InputButton id="inputName" type="submit" onClick={registerUserInfo}>
                 Start
               </InputButton>
             </div>
@@ -275,11 +321,11 @@ const Home: NextPage = () => {
         </Modal>
       </ModalBack>
       <ColumnArea>
-        <OpponentColor>黒 - 未着席さん</OpponentColor>
-        <PlayerColor>白 - 未着席さん</PlayerColor>
+        <PlayerBlack>黒 - 未着席さんだ</PlayerBlack>
+        <PlayerWhite>白 - 未着席さんだ</PlayerWhite>
       </ColumnArea>
       <ColumnArea>
-        <GameStateShow>白の手番です。</GameStateShow>
+        <GameStateShow>参加者募集中</GameStateShow>
         <Board>
           {board.map((row, y) =>
             row.map((num, x) => (
@@ -298,7 +344,20 @@ const Home: NextPage = () => {
       </ColumnArea>
       <ColumnArea>
         <LogArea readOnly={true} />
+        <ButtonArea>
+          <ButtonLabel>参加はこちらから</ButtonLabel>
+          <EntryButton>Entry</EntryButton>
+        </ButtonArea>
       </ColumnArea>
+      {isSocketCond ? (
+        <UserInfoArea>
+          {' '}
+          <UserInfoLabel>UserName : {userInfo.userName}</UserInfoLabel>
+          <UserInfoLabel>State : {userInfo.userState}</UserInfoLabel>
+        </UserInfoArea>
+      ) : (
+        ''
+      )}
     </Container>
   )
 }
