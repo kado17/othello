@@ -1,5 +1,6 @@
 import type { NextPage } from 'next'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { Socket } from 'socket.io-client'
 import { io } from 'socket.io-client'
 import styled from 'styled-components'
 
@@ -192,30 +193,45 @@ const AlertPrompt = styled.div`
   }
 `
 
-const socket = io(URL, {
-  reconnection: false,
-})
 const Home: NextPage = () => {
   const boardInit = Array.from(new Array(8), () => new Array(8).fill(9))
   const [board, setBoard] = useState(boardInit)
   const [userName, setUserName] = useState('匿名')
   const [isClickedStart, setIsClickedStart] = useState(false)
   const [isShowModal, setIsShowModal] = useState(true)
-
+  const [isSocketCond, setIsSocketCond] = useState<null | boolean>(null)
+  const socket = useRef<Socket>(null!)
   useEffect(() => {
-    socket.on('board', (msg) => {
+    socket.current = io(URL, {
+      reconnection: false,
+    })
+
+    socket.current.on('board', (msg) => {
       console.log(msg)
       const b = msg.board
       setBoard(b)
     })
-    socket.on('result', (msg) => {
+    socket.current.on('result', (msg) => {
       console.log(msg)
     })
+    socket.current.on('connect', () => {
+      setIsSocketCond(true)
+      console.log('connect!')
+    })
+    socket.current.on('connect_error', () => {
+      setIsSocketCond(false)
+      console.log('not_connect!')
+    })
+    return () => {
+      socket.current.disconnect()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
   const b = (x: number, y: number) => {
     const data = { y: y, x: x }
     console.log(data)
-    socket.emit('putDisk', { x: x, y: y })
+    socket.current.emit('putDisk', { x: x, y: y })
   }
 
   const setUserInfo = () => {
@@ -233,17 +249,29 @@ const Home: NextPage = () => {
       <AlertPrompt />
       <ModalBack isShow={isShowModal}>
         <Modal isShow={isClickedStart}>
-          <ModalLable>ユーザー名を入力してください</ModalLable>
-          <div>
-            <InputBox
-              id="inputName"
-              value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-            />
-            <InputButton id="inputName" type="submit" onClick={setUserInfo}>
-              Start
-            </InputButton>
-          </div>
+          <ModalLable>
+            {isSocketCond === null
+              ? '接続中'
+              : isSocketCond
+              ? 'ユーザー名を入力してください'
+              : 'サーバーに接続できません'}
+          </ModalLable>
+          {isSocketCond === null ? (
+            ''
+          ) : isSocketCond ? (
+            <div>
+              <InputBox
+                id="inputName"
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+              />
+              <InputButton id="inputName" type="submit" onClick={setUserInfo}>
+                Start
+              </InputButton>
+            </div>
+          ) : (
+            ''
+          )}
         </Modal>
       </ModalBack>
       <ColumnArea>
@@ -262,7 +290,7 @@ const Home: NextPage = () => {
                   b(x, y)
                 }}
               >
-                {num === 1 ? <WhiteDisk /> : num === 1 ? <BlackDisk /> : ''}
+                {num === 0 ? <WhiteDisk /> : num === 1 ? <BlackDisk /> : ''}
               </Sqaure>
             ))
           )}
