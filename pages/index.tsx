@@ -6,6 +6,7 @@ import styled from 'styled-components'
 
 const URL = 'http://localhost:8000'
 const COLOR = ['white', 'black']
+const USER_STATE = ['観戦者', '対戦相手待機中']
 
 const Container = styled.div`
   display: flex;
@@ -19,7 +20,7 @@ const Container = styled.div`
 const Board = styled.div`
   align-items: center;
   width: 66vh;
-  height: 65vh;
+  height: 65.9vh;
   background-color: #0d0;
   border: 1vh solid black;
 `
@@ -50,7 +51,7 @@ const Disk = styled.div<{ num: number }>`
   border-radius: 50%;
 `
 
-const GameStateLabel = styled.label`
+const GameMsgLabel = styled.label`
   height: 8vh;
   margin: 0 0 1vh;
   font-size: 3vh;
@@ -184,10 +185,10 @@ const Home: NextPage = () => {
   const boardInit = Array.from(new Array(8), () => new Array(8).fill(9))
   const userInfoInit = {
     board: boardInit,
-    gameState: 'State',
+    msg: 'State',
   }
   const [gameInfo, setGameInfo] = useState(userInfoInit)
-  const [userState, setUserState] = useState('観戦者')
+  const [userState, setUserState] = useState(USER_STATE[0])
   const [isClickedStart, setIsClickedStart] = useState(false)
   const [isShowModal, setIsShowModal] = useState(true)
   const [isSocketCond, setIsSocketCond] = useState<null | boolean>(null)
@@ -205,10 +206,10 @@ const Home: NextPage = () => {
     })
     socket.current.on('gameInfo', (data) => {
       console.log(data)
-      const { board = gameInfo.board, gameState = gameInfo.gameState } = data
+      const { board = gameInfo.board, msg = gameInfo.msg } = data
       setGameInfo({
         board: board,
-        gameState: gameState,
+        msg: msg,
       })
     })
     socket.current.on('btn_action_rep', (data) => {
@@ -216,7 +217,7 @@ const Home: NextPage = () => {
       if (type === 'entry') {
         if (isSuccses) {
           window.alert('エントリーしました')
-          setUserState('対戦相手待機中')
+          setUserState(USER_STATE[1])
         }
       }
     })
@@ -230,6 +231,7 @@ const Home: NextPage = () => {
     socket.current.on('connect_error', () => {
       setIsSocketCond(false)
       console.log('not_connect!')
+      window.alert('サーバーに接続できませんでした。\nもう一度読み込みなおしてください。')
     })
     return () => {
       socket.current.disconnect()
@@ -237,10 +239,12 @@ const Home: NextPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const b = (x: number, y: number) => {
-    const data = { y: y, x: x }
-    console.log(data)
-    socket.current.emit('putDisk', { x: x, y: y })
+  const putDisk = (x: number, y: number, num: number) => {
+    if (num === 8) {
+      const data = { y: y, x: x }
+      console.log(data)
+      socket.current.emit('putDisk', { x: x, y: y })
+    }
   }
 
   const registerUserInfo = () => {
@@ -274,13 +278,17 @@ const Home: NextPage = () => {
               ? '接続完了!'
               : 'サーバーに接続できません'}
           </ModalLable>
-          <ModalButton id="inputName" type="submit" onClick={registerUserInfo}>
-            Start
-          </ModalButton>
+          {isSocketCond ? (
+            <ModalButton id="inputName" type="submit" onClick={registerUserInfo}>
+              Start
+            </ModalButton>
+          ) : (
+            ''
+          )}
         </Modal>
       </ModalBack>
 
-      <GameStateLabel> {gameInfo.gameState}</GameStateLabel>
+      <GameMsgLabel> {gameInfo.msg}</GameMsgLabel>
       <Board>
         {gameInfo.board.map((row, y) =>
           row.map((num, x) => (
@@ -288,7 +296,7 @@ const Home: NextPage = () => {
               key={`${x}-${y}`}
               num={num}
               onClick={() => {
-                b(x, y)
+                putDisk(x, y, num)
               }}
             >
               <Disk num={num} />
