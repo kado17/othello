@@ -3,9 +3,9 @@ import { useEffect, useRef, useState } from 'react'
 import type { Socket } from 'socket.io-client'
 import { io } from 'socket.io-client'
 import styled from 'styled-components'
+import * as t from './dataType'
 
 const URL = 'http://localhost:8000'
-const COLOR = ['white', 'black']
 const USER_STATE = ['観戦者', '対戦相手待機中', 'プレイヤー[白]', 'プレイヤー[黒]']
 
 const Container = styled.div`
@@ -25,7 +25,7 @@ const Board = styled.div`
   border: 1vh solid black;
 `
 
-const Sqaure = styled.div<{ num: number }>`
+const Sqaure = styled.div<{ num: number; gameState: string }>`
   position: relative;
   display: inline-block;
   width: 8vh;
@@ -34,18 +34,19 @@ const Sqaure = styled.div<{ num: number }>`
   line-height: 4.5vh;
   text-align: center;
   vertical-align: bottom;
-  background-color: ${({ num }) => (num === 8 ? 'red' : '')};
+  background-color: ${({ num, gameState }) =>
+    num === 8 && gameState === 'duringAGame' ? 'red' : ''};
   border: 0.2vh solid black;
 `
-const Disk = styled.div<{ num: number }>`
+const Disc = styled.div<{ disc: t.Disc }>`
   width: 5vh;
   height: 5vh;
   margin: auto;
-  background-color: ${({ num }) => (num === 0 || num === 1 ? COLOR[num] : '')};
+  background-color: ${({ disc }) => (disc === 0 ? 'white' : disc === 1 ? 'black' : '')};
   border-radius: 50%;
 `
 
-const BoardDisk = styled(Disk)`
+const BoardDisc = styled(Disc)`
   position: absolute;
   top: 0;
   right: 0;
@@ -76,9 +77,9 @@ const GameMsg = styled.div`
       0 1px 0 black, 0 -1px 0 black, -1px 0 0 black, 1px 0 0 black;
   }
 `
-const DiskCount = styled(GameMsg)`
+const DiscCount = styled(GameMsg)`
   top: initial;
-  bottom: 5vh;
+  bottom: 4vh;
   display: flex;
   width: initial;
   padding: 0.8vh;
@@ -146,13 +147,12 @@ const ButtonArea = styled.div`
   border-radius: 1.5em;
 `
 
-const EntryButton = styled.button`
+const ActButton = styled.button<{ actBtnNum: t.GameState }>`
   width: 20vh;
   height: 8vh;
   font-size: 4vh;
-  background-color: #ddd;
-
-  /* #c0c0c0 暗い #e6e6fa 明るめ */
+  background-color: ${({ actBtnNum }) =>
+    actBtnNum === 'playerWanted' ? '#ddd' : actBtnNum === 'duringAGame' ? '#c0c0c0' : '#e6e6fa'};
   border-bottom: solid 0.6vh #555;
   border-radius: 1.5em;
 
@@ -161,7 +161,12 @@ const EntryButton = styled.button`
     box-shadow: 0 0 0.1vh rgb(0 0 0 / 30%);
   }
 `
-const UserStateLabel = styled.div<{ userState: string }>`
+const ButtonLabel = styled.label`
+  margin: 0.5vh 0;
+  font-size: 2vh;
+  text-align: center;
+`
+const UserStateArea = styled.div<{ userState: string }>`
   position: fixed;
   bottom: 1vh;
   left: 1vh;
@@ -176,26 +181,19 @@ const UserStateLabel = styled.div<{ userState: string }>`
   box-shadow: 0 3px 5px rgb(0 0 0 / 22%);
 `
 
-const ButtonLabel = styled.label`
-  margin: 0.5vh 0;
-  font-size: 2vh;
-  text-align: center;
-`
-
 const Home: NextPage = () => {
   const boardInit = Array.from(new Array(8), () => new Array(8).fill(9))
-  const gameInfoInit = {
+  const gameInfoInit: t.GameInfo = {
     board: boardInit,
-    msg: 'INIT',
-    turnColor: 'black',
-    diskCount: { whiteCount: 0, blackCount: 0 },
-    isPlaying: false,
-    isGameOver: false,
+    msg: '',
+    turnColor: 'Black',
+    numberOfDisc: { White: 2, Black: 2 },
+    gameState: 'playerWanted',
   }
-  const [gameInfo, setGameInfo] = useState(gameInfoInit)
-  const [userState, setUserState] = useState(USER_STATE[0])
-  const [isClickedStart, setIsClickedStart] = useState(false)
-  const [isShowModal, setIsShowModal] = useState(true)
+  const [gameInfo, setGameInfo] = useState({ ...gameInfoInit })
+  const [userState, setUserState] = useState<string>(USER_STATE[0])
+  const [isClickedStart, setIsClickedStart] = useState<boolean>(false)
+  const [isShowModal, setIsShowModal] = useState<boolean>(true)
   const [isSocketCond, setIsSocketCond] = useState<null | boolean>(null)
   // eslint-disable-next-line
   const socket = useRef<Socket>(null!)
@@ -207,39 +205,40 @@ const Home: NextPage = () => {
     socket.current = io(URL, {
       reconnection: false,
     })
+
     socket.current.on('gameInfo', (data) => {
-      const { board = null, msg = null, diskCount = null, turnColor = null } = data
-      console.log(data)
-      if (board !== null) setGameInfo((current) => ({ ...current, board: board }))
-
-      if (msg !== null) setGameInfo((current) => ({ ...current, msg: msg }))
-
-      if (diskCount !== null) setGameInfo((current) => ({ ...current, diskCount: diskCount }))
-      if (turnColor !== null) setGameInfo((current) => ({ ...current, turnColor: turnColor }))
+      const { board, msg, numberOfDisc, turnColor, gameState } = data
+      console.log('gameInfo', data)
+      if (board !== undefined) setGameInfo((current) => ({ ...current, board: board }))
+      if (msg !== undefined) setGameInfo((current) => ({ ...current, msg: msg }))
+      if (numberOfDisc !== undefined)
+        setGameInfo((current) => ({ ...current, numberOfDisc: numberOfDisc }))
+      if (turnColor !== undefined) setGameInfo((current) => ({ ...current, turnColor: turnColor }))
+      if (gameState !== undefined) setGameInfo((current) => ({ ...current, gameState: gameState }))
+      console.log('gameInfoNow', gameInfo)
     })
     socket.current.on('btnActionRep', (data) => {
-      const { type, isSuccses } = data
-      if (type === 'entry') {
-        if (isSuccses) {
-          window.alert('エントリーしました')
-          setUserState(USER_STATE[1])
-        }
+      console.log('btn', data)
+      const { isSuccses }: { isSuccses: boolean } = data
+      if (isSuccses) {
+        window.alert('エントリーしました')
+        setUserState(USER_STATE[1])
       }
     })
     socket.current.on('startReversi', (data) => {
-      const { color } = data
-      if (color === 'white') {
-        setUserState(USER_STATE[2])
-      } else if (color === 'black') {
-        setUserState(USER_STATE[3])
-      }
-      setGameInfo({ ...gameInfo, isPlaying: true })
+      console.log('startREv', data)
+      const { color }: { color: t.PLColor } = data
+      if (color === 'White') setUserState(USER_STATE[2])
+      else if (color === 'Black') setUserState(USER_STATE[3])
     })
 
     socket.current.on('gameOver', (data) => {
-      const { result } = data
-      console.log(result)
-      setGameInfo((current) => ({ ...current, isGameover: true }))
+      console.log('gameover', data)
+      const { isGameCancel }: { isGameCancel: boolean } = data
+      if (isGameCancel) {
+        window.alert('ゲームが中止になりました')
+      }
+      //setGameInfo((current) => ({ ...current, isPlaying: false, isGameover: true }))
     })
     socket.current.on('connect', () => {
       setIsSocketCond(true)
@@ -256,11 +255,11 @@ const Home: NextPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const putDisk = (x: number, y: number, num: number) => {
-    if (num === 8) {
+  const putDisc = (x: number, y: number, disc: t.Disc) => {
+    if (disc === 8) {
       const data = { y: y, x: x }
       console.log(data)
-      socket.current.emit('putDisk', { x: x, y: y })
+      socket.current.emit('putDisc', { x: x, y: y })
     }
   }
 
@@ -268,21 +267,30 @@ const Home: NextPage = () => {
     setIsClickedStart(true)
     setIsShowModal(false)
     console.log(socket.current.id)
-    /* socket.on('connect', () => {
-      console.log(`socket.connectの中身：`)
-      console.log(socket.id)
-    })*/
   }
 
-  const entry = () => {
-    if (window.confirm('エントリーしますか？')) {
-      alert('エントリーしました。')
-      socket.current.emit('entry')
+  const btnCmd = (GState: t.GameState) => {
+    const cmdList: { [key: string]: string[] } = {
+      playerWanted: ['エントリーしますか？', 'entry'],
+      duringAGame: ['ゲームを中止しますか?\n※対戦結果へ移行します。', 'cancel'],
+      gameResult: ['対戦結果の表示を終了しますか?参加画面に移行します。', 'reset'],
+    }
+    if (window.confirm(cmdList[GState][0])) {
+      socket.current.emit(cmdList[GState][1])
     } else {
       alert('キャンセルされました。')
     }
   }
 
+  const btnStr = (GState: t.GameState) => {
+    const LabelList: { [key: string]: { [key: string]: string } } = {
+      playerWanted: { label: '参加はこちらから', btn: 'Entry' },
+      duringAGame: { label: '対戦を中止する', btn: 'Cancel ' },
+      gameResult: { label: '結果発表の終了', btn: 'Reset' },
+    }
+    const key: string = GState
+    return LabelList[key]
+  }
   return (
     <Container>
       <ModalBack isShow={isShowModal}>
@@ -311,32 +319,33 @@ const Home: NextPage = () => {
             <Sqaure
               key={`${x}-${y}`}
               num={num}
+              gameState={gameInfo.gameState}
               onClick={() => {
-                putDisk(x, y, num)
+                putDisc(x, y, num)
               }}
             >
-              <BoardDisk num={num} />
+              <BoardDisc disc={num} />
             </Sqaure>
           ))
         )}
       </Board>
-      <DiskCount>
-        <Disk num={0} />：{zeroPadding(gameInfo.diskCount.whiteCount)} -{' '}
-        {zeroPadding(gameInfo.diskCount.blackCount)}： <Disk num={1} />
-      </DiskCount>
-      {!gameInfo.isPlaying || userState === USER_STATE[2] || userState === USER_STATE[3] ? (
+      <DiscCount>
+        <Disc disc={t.Disc.White} />：{zeroPadding(gameInfo.numberOfDisc.White)} -{' '}
+        {zeroPadding(gameInfo.numberOfDisc.Black)}： <Disc disc={t.Disc.Black} />
+      </DiscCount>
+      {gameInfo.gameState === 'playerWanted' ||
+      userState === USER_STATE[2] ||
+      userState === USER_STATE[3] ? (
         <ButtonArea>
-          <ButtonLabel>参加はこちらから</ButtonLabel>
-          <EntryButton onClick={() => entry()}>Entry</EntryButton>
+          <ButtonLabel>{btnStr(gameInfo.gameState).label}</ButtonLabel>
+          <ActButton actBtnNum={gameInfo.gameState} onClick={() => btnCmd(gameInfo.gameState)}>
+            {btnStr(gameInfo.gameState).btn}
+          </ActButton>
         </ButtonArea>
       ) : (
         ''
       )}
-      {isSocketCond ? (
-        <UserStateLabel userState={userState}>State : {userState}</UserStateLabel>
-      ) : (
-        ''
-      )}
+      {isSocketCond ? <UserStateArea userState={userState}>State : {userState}</UserStateArea> : ''}
     </Container>
   )
 }
