@@ -6,7 +6,12 @@ import styled from 'styled-components'
 import * as t from './dataType'
 
 const URL = 'http://localhost:8000'
-const USER_STATE = ['観戦者', '対戦相手待機中', 'プレイヤー[白]', 'プレイヤー[黒]']
+const USER_STATE = {
+  spectator: '観戦者',
+  waiting: '対戦相手待機中',
+  PLWhite: 'プレイヤー[白]',
+  PLBlack: 'プレイヤー[黒]',
+}
 
 const Container = styled.div`
   display: flex;
@@ -25,7 +30,7 @@ const Board = styled.div`
   border: 1vh solid black;
 `
 
-const Sqaure = styled.div<{ num: number; gameState: string }>`
+const Sqaure = styled.div`
   position: relative;
   display: inline-block;
   width: 8vh;
@@ -34,8 +39,6 @@ const Sqaure = styled.div<{ num: number; gameState: string }>`
   line-height: 4.5vh;
   text-align: center;
   vertical-align: bottom;
-  background-color: ${({ num, gameState }) =>
-    num === 8 && gameState === 'duringAGame' ? 'red' : ''};
   border: 0.2vh solid black;
 `
 const Disc = styled.div<{ disc: t.Disc }>`
@@ -54,6 +57,16 @@ const BoardDisc = styled(Disc)`
   left: 0;
   width: 5vh;
   height: 5vh;
+`
+const PutableMarker = styled(BoardDisc)<{ turnColor: t.PLColor; gameState: string }>`
+  width: 2vh;
+  height: 2vh;
+  background-color: ${({ turnColor, gameState }) =>
+    turnColor === 'White' && gameState === 'duringAGame'
+      ? 'white'
+      : turnColor === 'Black' && gameState === 'duringAGame'
+      ? 'black'
+      : ''};
 `
 
 const GameMsg = styled.div`
@@ -114,14 +127,15 @@ const ModalBack = styled.div<{ isShow: boolean }>`
   bottom: 0;
   left: 0;
   z-index: 1;
-  display: ${({ isShow }) => (isShow ? '' : 'None')};
   display: None;
+  display: ${({ isShow }) => (isShow ? '' : 'None')};
   width: 100%;
   height: 100%;
   background-color: rgb(0 0 0 / 80%);
 `
 
-const ModalButton = styled.button`
+const ModalButton = styled.button<{ isBtnShow: boolean | null }>`
+  display: ${({ isBtnShow }) => (isBtnShow ? '' : 'None')};
   width: 40%;
   height: 30%;
   margin-top: 10%;
@@ -134,11 +148,11 @@ const ModalButton = styled.button`
     background-color: #ccc;
   }
 `
-const ButtonArea = styled.div`
+const ButtonArea = styled.div<{ isShow: boolean }>`
   position: fixed;
   right: 1vh;
   bottom: 1vh;
-  display: flex;
+  display: ${({ isShow }) => (isShow ? 'flex' : 'None')};
   flex-direction: column;
   height: 15vh;
   padding: 1vh;
@@ -147,12 +161,11 @@ const ButtonArea = styled.div`
   border-radius: 1.5em;
 `
 
-const ActButton = styled.button<{ actBtnNum: t.GameState }>`
+const ActButton = styled.button<{ backColor: string }>`
   width: 20vh;
   height: 8vh;
   font-size: 4vh;
-  background-color: ${({ actBtnNum }) =>
-    actBtnNum === 'playerWanted' ? '#ddd' : actBtnNum === 'duringAGame' ? '#c0c0c0' : '#e6e6fa'};
+  background-color: ${({ backColor }) => backColor};
   border-bottom: solid 0.6vh #555;
   border-radius: 1.5em;
 
@@ -166,17 +179,17 @@ const ButtonLabel = styled.label`
   font-size: 2vh;
   text-align: center;
 `
-const UserStateArea = styled.div<{ userState: string }>`
+const UserStateArea = styled.div<{ isShow: boolean | null; userStateKey: t.UserState }>`
   position: fixed;
   bottom: 1vh;
   left: 1vh;
-  display: flex;
+  display: ${({ isShow }) => (isShow ? 'flex' : 'None')};
   flex-direction: column;
   padding: 1vh;
   font-size: 3.6vh;
-  color: ${({ userState }) => (userState === USER_STATE[3] ? 'white' : 'black')};
-  background-color: ${({ userState }) =>
-    userState === USER_STATE[2] ? 'white' : userState === USER_STATE[3] ? 'black' : 'whitesmoke'};
+  color: ${({ userStateKey }) => (userStateKey === 'PLBlack' ? 'white' : 'black')};
+  background-color: ${({ userStateKey }) =>
+    userStateKey === 'PLWhite' ? 'white' : userStateKey === 'PLBlack' ? 'black' : 'whitesmoke'};
   border-left: solid 0.5vh gray;
   box-shadow: 0 3px 5px rgb(0 0 0 / 22%);
 `
@@ -185,13 +198,13 @@ const Home: NextPage = () => {
   const boardInit = Array.from(new Array(8), () => new Array(8).fill(9))
   const gameInfoInit: t.GameInfo = {
     board: boardInit,
-    msg: '',
+    msg: 'Reversi',
     turnColor: 'Black',
     numberOfDisc: { White: 2, Black: 2 },
     gameState: 'playerWanted',
   }
   const [gameInfo, setGameInfo] = useState({ ...gameInfoInit })
-  const [userState, setUserState] = useState<string>(USER_STATE[0])
+  const [userState, setUserState] = useState<t.UserState>('spectator')
   const [isClickedStart, setIsClickedStart] = useState<boolean>(false)
   const [isShowModal, setIsShowModal] = useState<boolean>(true)
   const [isSocketCond, setIsSocketCond] = useState<null | boolean>(null)
@@ -207,38 +220,22 @@ const Home: NextPage = () => {
     })
 
     socket.current.on('gameInfo', (data) => {
-      const { board, msg, numberOfDisc, turnColor, gameState } = data
-      console.log('gameInfo', data)
-      if (board !== undefined) setGameInfo((current) => ({ ...current, board: board }))
-      if (msg !== undefined) setGameInfo((current) => ({ ...current, msg: msg }))
-      if (numberOfDisc !== undefined)
-        setGameInfo((current) => ({ ...current, numberOfDisc: numberOfDisc }))
-      if (turnColor !== undefined) setGameInfo((current) => ({ ...current, turnColor: turnColor }))
-      if (gameState !== undefined) setGameInfo((current) => ({ ...current, gameState: gameState }))
-      console.log('gameInfoNow', gameInfo)
+      for (const key of Object.keys(gameInfo)) {
+        if (key in data) {
+          setGameInfo((current) => ({ ...current, [key]: data[key] }))
+        }
+      }
     })
-    socket.current.on('btnActionRep', (data) => {
+    socket.current.on('showAlert', (data) => {
       console.log('btn', data)
-      const { isSuccses }: { isSuccses: boolean } = data
-      if (isSuccses) {
-        window.alert('エントリーしました')
-        setUserState(USER_STATE[1])
-      }
+      const { alertMsg }: { alertMsg: string } = data
+      window.alert(alertMsg)
     })
-    socket.current.on('startReversi', (data) => {
+    socket.current.on('userState', (data) => {
       console.log('startREv', data)
-      const { color }: { color: t.PLColor } = data
-      if (color === 'White') setUserState(USER_STATE[2])
-      else if (color === 'Black') setUserState(USER_STATE[3])
-    })
-
-    socket.current.on('gameOver', (data) => {
-      console.log('gameover', data)
-      const { isGameCancel }: { isGameCancel: boolean } = data
-      if (isGameCancel) {
-        window.alert('ゲームが中止になりました')
-      }
-      //setGameInfo((current) => ({ ...current, isPlaying: false, isGameover: true }))
+      const { newUserState }: { newUserState: t.UserState } = data
+      console.log('3000', newUserState)
+      setUserState(newUserState)
     })
     socket.current.on('connect', () => {
       setIsSocketCond(true)
@@ -269,27 +266,82 @@ const Home: NextPage = () => {
     console.log(socket.current.id)
   }
 
-  const btnCmd = (GState: t.GameState) => {
-    const cmdList: { [key: string]: string[] } = {
-      playerWanted: ['エントリーしますか？', 'entry'],
-      duringAGame: ['ゲームを中止しますか?\n※対戦結果へ移行します。', 'cancel'],
-      gameResult: ['対戦結果の表示を終了しますか?参加画面に移行します。', 'reset'],
+  const btnCmd = (GState: t.GameState, UState: t.UserState) => {
+    const emitCmd: { [key: string]: { [key: string]: string } } = {
+      entry: {
+        confirm: 'エントリーしますか？',
+        emit: 'entry',
+      },
+      entryCancel: {
+        confirm: 'エントリーをキャンセルしますか?\n※観戦者になります。',
+        emit: 'entryCancel',
+      },
+      gameCancel: {
+        confirm: 'ゲームを中止しますか?\n※対戦結果へ移行します。',
+        emit: 'cancel',
+      },
+      gameResultEnd: {
+        confirm: '対戦結果の表示を終了しますか?\n※参加画面に移行します。',
+        emit: 'reset',
+      },
     }
-    if (window.confirm(cmdList[GState][0])) {
-      socket.current.emit(cmdList[GState][1])
-    } else {
-      alert('キャンセルされました。')
+    const emitKey = getViewandEmitKey(GState, UState)
+    if (emitKey !== '') {
+      if (window.confirm(emitCmd[emitKey].confirm)) {
+        socket.current.emit(emitCmd[emitKey].emit)
+      } else {
+        window.alert('キャンセルされました。')
+      }
     }
   }
 
-  const btnStr = (GState: t.GameState) => {
-    const LabelList: { [key: string]: { [key: string]: string } } = {
-      playerWanted: { label: '参加はこちらから', btn: 'Entry' },
-      duringAGame: { label: '対戦を中止する', btn: 'Cancel ' },
-      gameResult: { label: '結果発表の終了', btn: 'Reset' },
+  const getViewConfig = (GState: t.GameState, UState: t.UserState) => {
+    const view_Config: { [key: string]: { [key: string]: string } } = {
+      entry: {
+        label: '参加はこちらから',
+        btn: 'Entry',
+        btnColor: '#ddd',
+      },
+      entryCancel: {
+        label: '参加のキャンセル',
+        btn: 'exit',
+        btnColor: '#ccc',
+      },
+      gameCancel: {
+        label: '対戦を中止する',
+        btn: 'Cancel ',
+        btnColor: '#c0c0c0',
+      },
+      gameResultEnd: {
+        label: '結果発表の終了',
+        btn: 'Reset',
+        btnColor: '#e6e6fa',
+      },
     }
-    const key: string = GState
-    return LabelList[key]
+    const viewKey = getViewandEmitKey(GState, UState)
+    if (viewKey !== '') return view_Config[viewKey]
+    return {
+      label: 'label',
+      btn: 'btn',
+      btnColor: '',
+    }
+  }
+  const getViewandEmitKey = (GState: t.GameState, UState: t.UserState): t.ViewandEmitKey => {
+    let key: t.ViewandEmitKey = ''
+    switch (GState) {
+      case 'playerWanted':
+        if (UState === 'spectator') key = 'entry'
+        else if (UState === 'waiting') key = 'entryCancel'
+        break
+      case 'duringAGame':
+        key = 'gameCancel'
+        break
+      case 'gameResult':
+        key = 'gameResultEnd'
+        break
+    }
+    console.log('G', GState, UState)
+    return key
   }
   return (
     <Container>
@@ -302,13 +354,14 @@ const Home: NextPage = () => {
               ? '接続完了!'
               : 'サーバーに接続できません'}
           </ModalLable>
-          {isSocketCond ? (
-            <ModalButton id="inputName" type="submit" onClick={registerUserInfo}>
-              Start
-            </ModalButton>
-          ) : (
-            ''
-          )}
+          <ModalButton
+            id="inputName"
+            type="submit"
+            isBtnShow={isSocketCond}
+            onClick={registerUserInfo}
+          >
+            Start
+          </ModalButton>
         </Modal>
       </ModalBack>
 
@@ -318,13 +371,20 @@ const Home: NextPage = () => {
           row.map((num, x) => (
             <Sqaure
               key={`${x}-${y}`}
-              num={num}
-              gameState={gameInfo.gameState}
               onClick={() => {
                 putDisc(x, y, num)
               }}
             >
-              <BoardDisc disc={num} />
+              {' '}
+              {num === 8 ? (
+                <PutableMarker
+                  disc={9}
+                  turnColor={gameInfo.turnColor}
+                  gameState={gameInfo.gameState}
+                />
+              ) : (
+                <BoardDisc disc={num} />
+              )}
             </Sqaure>
           ))
         )}
@@ -333,19 +393,24 @@ const Home: NextPage = () => {
         <Disc disc={t.Disc.White} />：{zeroPadding(gameInfo.numberOfDisc.White)} -{' '}
         {zeroPadding(gameInfo.numberOfDisc.Black)}： <Disc disc={t.Disc.Black} />
       </DiscCount>
-      {gameInfo.gameState === 'playerWanted' ||
-      userState === USER_STATE[2] ||
-      userState === USER_STATE[3] ? (
-        <ButtonArea>
-          <ButtonLabel>{btnStr(gameInfo.gameState).label}</ButtonLabel>
-          <ActButton actBtnNum={gameInfo.gameState} onClick={() => btnCmd(gameInfo.gameState)}>
-            {btnStr(gameInfo.gameState).btn}
-          </ActButton>
-        </ButtonArea>
-      ) : (
-        ''
-      )}
-      {isSocketCond ? <UserStateArea userState={userState}>State : {userState}</UserStateArea> : ''}
+
+      <ButtonArea
+        isShow={
+          gameInfo.gameState !== 'duringAGame' || userState === 'PLWhite' || userState === 'PLBlack'
+        }
+      >
+        <ButtonLabel>{getViewConfig(gameInfo.gameState, userState).label}</ButtonLabel>
+        <ActButton
+          backColor={getViewConfig(gameInfo.gameState, userState).btnColor}
+          onClick={() => btnCmd(gameInfo.gameState, userState)}
+        >
+          {getViewConfig(gameInfo.gameState, userState).btn}
+        </ActButton>
+      </ButtonArea>
+
+      <UserStateArea isShow={isSocketCond} userStateKey={userState}>
+        State : {USER_STATE[userState]}
+      </UserStateArea>
     </Container>
   )
 }

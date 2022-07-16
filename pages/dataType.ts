@@ -8,6 +8,8 @@ export const Disc = {
 export type GameState = 'playerWanted' | 'duringAGame' | 'gameResult'
 export type Disc = typeof Disc[keyof typeof Disc]
 export type PLColor = 'White' | 'Black' | 'NA'
+export type UserState = 'spectator' | 'waiting' | 'PLWhite' | 'PLBlack'
+export type ViewandEmitKey = 'entry' | 'entryCancel' | 'gameCancel' | 'gameResultEnd' | ''
 
 export const colorConvJp: { [key in PLColor]: string } = {
   White: '白',
@@ -21,8 +23,6 @@ export type NumberOfDisc = {
   White: number
   Black: number
 }
-
-export type GameInfoKey = 'board' | 'msg' | 'turnColor' | 'numberOfDisc' | 'gameState'
 export type GameInfoType = Disc[][] | string | PLColor | NumberOfDisc | boolean
 
 export type GameInfo = {
