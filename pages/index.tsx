@@ -21,7 +21,6 @@ const Container = styled.div`
   height: 100vh;
   background-color: #cff;
 `
-
 const Board = styled.div`
   align-items: center;
   width: 66vh;
@@ -29,7 +28,6 @@ const Board = styled.div`
   background-color: #0d0;
   border: 1vh solid black;
 `
-
 const Sqaure = styled.div`
   position: relative;
   display: inline-block;
@@ -48,7 +46,6 @@ const Disc = styled.div<{ disc: t.Disc }>`
   background-color: ${({ disc }) => (disc === 0 ? 'white' : disc === 1 ? 'black' : '')};
   border-radius: 50%;
 `
-
 const BoardDisc = styled(Disc)`
   position: absolute;
   top: 0;
@@ -68,7 +65,6 @@ const PutableMarker = styled(BoardDisc)<{ turnColor: t.PLColor; gameState: strin
       ? 'black'
       : ''};
 `
-
 const GameMsg = styled.div`
   position: fixed;
   top: 5vh;
@@ -98,7 +94,6 @@ const DiscCount = styled(GameMsg)`
   padding: 0.8vh;
   line-height: 4.5vh;
 `
-
 const Modal = styled.div<{ isShow: boolean }>`
   position: absolute;
   top: 30%;
@@ -112,14 +107,12 @@ const Modal = styled.div<{ isShow: boolean }>`
   background: whitesmoke;
   border-radius: 1.5em;
 `
-
 const ModalLable = styled.label`
   margin-top: 8%;
   font-size: 270%;
   color: black;
   text-align: center;
 `
-
 const ModalBack = styled.div<{ isShow: boolean }>`
   position: fixed;
   top: 0;
@@ -127,13 +120,11 @@ const ModalBack = styled.div<{ isShow: boolean }>`
   bottom: 0;
   left: 0;
   z-index: 1;
-  display: None;
   display: ${({ isShow }) => (isShow ? '' : 'None')};
   width: 100%;
   height: 100%;
   background-color: rgb(0 0 0 / 80%);
 `
-
 const ModalButton = styled.button<{ isBtnShow: boolean | null }>`
   display: ${({ isBtnShow }) => (isBtnShow ? '' : 'None')};
   width: 40%;
@@ -160,7 +151,6 @@ const ButtonArea = styled.div<{ isShow: boolean }>`
   border: solid 0.2vh black;
   border-radius: 1.5em;
 `
-
 const ActButton = styled.button<{ backColor: string }>`
   width: 20vh;
   height: 8vh;
@@ -193,7 +183,17 @@ const UserStateArea = styled.div<{ isShow: boolean | null; userStateKey: t.UserS
   border-left: solid 0.5vh gray;
   box-shadow: 0 3px 5px rgb(0 0 0 / 22%);
 `
-
+const ConnectCountLabel = styled.label`
+  position: fixed;
+  top: 1vh;
+  left: 1vh;
+  padding: 1vh 2vh;
+  font-size: 3vh;
+  text-align: center;
+  background-color: whitesmoke;
+  border-radius: 1.5em;
+  box-shadow: 0 3px 5px rgb(0 0 0 / 22%);
+`
 const Home: NextPage = () => {
   const boardInit = Array.from(new Array(8), () => new Array(8).fill(9))
   const gameInfoInit: t.GameInfo = {
@@ -208,11 +208,9 @@ const Home: NextPage = () => {
   const [isClickedStart, setIsClickedStart] = useState<boolean>(false)
   const [isShowModal, setIsShowModal] = useState<boolean>(true)
   const [isSocketCond, setIsSocketCond] = useState<null | boolean>(null)
+  const [connectCount, setConnectCount] = useState<number>(0)
   // eslint-disable-next-line
   const socket = useRef<Socket>(null!)
-  const zeroPadding = (num: number) => {
-    return `0${num}`.slice(-2)
-  }
 
   useEffect(() => {
     socket.current = io(URL, {
@@ -237,6 +235,10 @@ const Home: NextPage = () => {
       console.log('3000', newUserState)
       setUserState(newUserState)
     })
+    socket.current.on('connectCount', (data) => {
+      const { newConnectCount }: { newConnectCount: number } = data
+      setConnectCount(newConnectCount)
+    })
     socket.current.on('connect', () => {
       setIsSocketCond(true)
       console.log('connect!')
@@ -254,16 +256,33 @@ const Home: NextPage = () => {
 
   const putDisc = (x: number, y: number, disc: t.Disc) => {
     if (disc === 8) {
-      const data = { y: y, x: x }
-      console.log(data)
-      socket.current.emit('putDisc', { x: x, y: y })
+      if (
+        (gameInfo.turnColor === 'Black' && userState === 'PLBlack') ||
+        (gameInfo.turnColor === 'White' && userState === 'PLWhite')
+      ) {
+        const data = { y: y, x: x }
+        console.log(data)
+        socket.current.emit('putDisc', { x: x, y: y })
+      }
     }
   }
 
-  const registerUserInfo = () => {
-    setIsClickedStart(true)
-    setIsShowModal(false)
-    console.log(socket.current.id)
+  const getViewandEmitKey = (GState: t.GameState, UState: t.UserState): t.ViewandEmitKey => {
+    let key: t.ViewandEmitKey = ''
+    switch (GState) {
+      case 'playerWanted':
+        if (UState === 'spectator') key = 'entry'
+        else if (UState === 'waiting') key = 'entryCancel'
+        break
+      case 'duringAGame':
+        key = 'gameCancel'
+        break
+      case 'gameResult':
+        key = 'gameResultEnd'
+        break
+    }
+    console.log('G', GState, UState)
+    return key
   }
 
   const btnCmd = (GState: t.GameState, UState: t.UserState) => {
@@ -326,23 +345,17 @@ const Home: NextPage = () => {
       btnColor: '',
     }
   }
-  const getViewandEmitKey = (GState: t.GameState, UState: t.UserState): t.ViewandEmitKey => {
-    let key: t.ViewandEmitKey = ''
-    switch (GState) {
-      case 'playerWanted':
-        if (UState === 'spectator') key = 'entry'
-        else if (UState === 'waiting') key = 'entryCancel'
-        break
-      case 'duringAGame':
-        key = 'gameCancel'
-        break
-      case 'gameResult':
-        key = 'gameResultEnd'
-        break
-    }
-    console.log('G', GState, UState)
-    return key
+
+  const registerUserInfo = () => {
+    setIsClickedStart(true)
+    setIsShowModal(false)
+    console.log(socket.current.id)
   }
+
+  const zeroPadding = (num: number) => {
+    return `0${num}`.slice(-2)
+  }
+
   return (
     <Container>
       <ModalBack isShow={isShowModal}>
@@ -364,7 +377,7 @@ const Home: NextPage = () => {
           </ModalButton>
         </Modal>
       </ModalBack>
-
+      <ConnectCountLabel>現在の接続人数：{connectCount}人</ConnectCountLabel>
       <GameMsg> {gameInfo.msg}</GameMsg>
       <Board>
         {gameInfo.board.map((row, y) =>
