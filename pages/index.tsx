@@ -241,11 +241,9 @@ const Home: NextPage = () => {
     })
     socket.current.on('connect', () => {
       setIsSocketCond(true)
-      console.log('connect!')
     })
     socket.current.on('connect_error', () => {
       setIsSocketCond(false)
-      console.log('not_connect!')
       window.alert('サーバーに接続できませんでした。\nもう一度読み込みなおしてください。')
     })
     return () => {
@@ -260,8 +258,6 @@ const Home: NextPage = () => {
         (gameInfo.turnColor === 'Black' && userState === 'PLBlack') ||
         (gameInfo.turnColor === 'White' && userState === 'PLWhite')
       ) {
-        const data = { y: y, x: x }
-        console.log(data)
         socket.current.emit('putDisc', { x: x, y: y })
       }
     }
@@ -281,7 +277,6 @@ const Home: NextPage = () => {
         key = 'gameResultEnd'
         break
     }
-    console.log('G', GState, UState)
     return key
   }
 
@@ -349,7 +344,6 @@ const Home: NextPage = () => {
   const registerUserInfo = () => {
     setIsClickedStart(true)
     setIsShowModal(false)
-    console.log(socket.current.id)
   }
 
   const zeroPadding = (num: number) => {
