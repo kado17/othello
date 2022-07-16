@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Socket } from 'socket.io-client'
 import { io } from 'socket.io-client'
 import styled from 'styled-components'
-import * as t from './dataType'
+import * as t from '../public/typedef'
 
 const URL = 'http://localhost:8000'
 const USER_STATE = {
