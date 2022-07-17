@@ -5,7 +5,7 @@ import { io } from 'socket.io-client'
 import styled from 'styled-components'
 import * as t from '../public/typedef'
 
-const URL = 'http://localhost:8000'
+const URL = 'https://reversiserver.herokuapp.com/'
 const USER_STATE = {
   spectator: '観戦者',
   waiting: '対戦相手待機中',
@@ -215,6 +215,7 @@ const Home: NextPage = () => {
   useEffect(() => {
     socket.current = io(URL, {
       reconnection: false,
+      withCredentials: true,
     })
 
     socket.current.on('gameInfo', (data) => {
