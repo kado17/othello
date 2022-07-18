@@ -226,14 +226,11 @@ const Home: NextPage = () => {
       }
     })
     socket.current.on('showAlert', (data) => {
-      console.log('btn', data)
       const { alertMsg }: { alertMsg: string } = data
       window.alert(alertMsg)
     })
     socket.current.on('userState', (data) => {
-      console.log('startREv', data)
       const { newUserState }: { newUserState: t.UserState } = data
-      console.log('3000', newUserState)
       setUserState(newUserState)
     })
     socket.current.on('connectCount', (data) => {
