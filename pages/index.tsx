@@ -13,6 +13,7 @@ const USER_STATE = {
   PLBlack: 'プレイヤー[黒]',
 }
 
+//背景
 const Container = styled.div`
   display: flex;
   flex-direction: column;
@@ -21,6 +22,7 @@ const Container = styled.div`
   height: 100vh;
   background-color: #cff;
 `
+//盤面
 const Board = styled.div`
   align-items: center;
   width: 66vh;
@@ -28,6 +30,7 @@ const Board = styled.div`
   background-color: #0d0;
   border: 1vh solid black;
 `
+//石を置く升目
 const Sqaure = styled.div`
   position: relative;
   display: inline-block;
@@ -39,6 +42,7 @@ const Sqaure = styled.div`
   vertical-align: bottom;
   border: 0.2vh solid black;
 `
+//オセロ石
 const Disc = styled.div<{ disc: t.Disc }>`
   width: 5vh;
   height: 5vh;
@@ -46,6 +50,7 @@ const Disc = styled.div<{ disc: t.Disc }>`
   background-color: ${({ disc }) => (disc === 0 ? 'white' : disc === 1 ? 'black' : '')};
   border-radius: 50%;
 `
+//盤面に置く用の石
 const BoardDisc = styled(Disc)`
   position: absolute;
   top: 0;
@@ -55,6 +60,7 @@ const BoardDisc = styled(Disc)`
   width: 5vh;
   height: 5vh;
 `
+//石を置ける場所を示すマーカー
 const PutableMarker = styled(BoardDisc)<{ turnColor: t.PLColor; gameState: string }>`
   width: 2vh;
   height: 2vh;
@@ -65,6 +71,7 @@ const PutableMarker = styled(BoardDisc)<{ turnColor: t.PLColor; gameState: strin
       ? 'black'
       : ''};
 `
+//手番プレイヤーなどのゲーム情報を表示
 const GameMsg = styled.div`
   position: fixed;
   top: 5vh;
@@ -86,6 +93,7 @@ const GameMsg = styled.div`
       0 1px 0 black, 0 -1px 0 black, -1px 0 0 black, 1px 0 0 black;
   }
 `
+//黒白両方の盤面に置かれている石の数を表示
 const DiscCount = styled(GameMsg)`
   top: initial;
   bottom: 4vh;
@@ -94,6 +102,7 @@ const DiscCount = styled(GameMsg)`
   padding: 0.8vh;
   line-height: 4.5vh;
 `
+//モーダルの本体
 const Modal = styled.div<{ isShow: boolean }>`
   position: absolute;
   top: 30%;
@@ -107,12 +116,14 @@ const Modal = styled.div<{ isShow: boolean }>`
   background: whitesmoke;
   border-radius: 1.5em;
 `
+//モーダル内のLable
 const ModalLable = styled.label`
   margin-top: 8%;
   font-size: 270%;
   color: black;
   text-align: center;
 `
+//モーダル表示中の背景
 const ModalBack = styled.div<{ isShow: boolean }>`
   position: fixed;
   top: 0;
@@ -125,6 +136,7 @@ const ModalBack = styled.div<{ isShow: boolean }>`
   height: 100%;
   background-color: rgb(0 0 0 / 80%);
 `
+//モーダル内のボタン
 const ModalButton = styled.button<{ isBtnShow: boolean | null }>`
   display: ${({ isBtnShow }) => (isBtnShow ? '' : 'None')};
   width: 40%;
@@ -139,6 +151,7 @@ const ModalButton = styled.button<{ isBtnShow: boolean | null }>`
     background-color: #ccc;
   }
 `
+//ユーザーが押せるボタンの背景
 const ButtonArea = styled.div<{ isShow: boolean }>`
   position: fixed;
   right: 1vh;
@@ -151,6 +164,7 @@ const ButtonArea = styled.div<{ isShow: boolean }>`
   border: solid 0.2vh black;
   border-radius: 1.5em;
 `
+//ユーザーが押せるボタン
 const ActButton = styled.button<{ backColor: string }>`
   width: 20vh;
   height: 8vh;
@@ -164,11 +178,13 @@ const ActButton = styled.button<{ backColor: string }>`
     box-shadow: 0 0 0.1vh rgb(0 0 0 / 30%);
   }
 `
+//ボタンの説明ラベル
 const ButtonLabel = styled.label`
   margin: 0.5vh 0;
   font-size: 2vh;
   text-align: center;
 `
+//ユーザーの情報を表示
 const UserStateArea = styled.div<{ isShow: boolean | null; userStateKey: t.UserState }>`
   position: fixed;
   bottom: 1vh;
@@ -183,6 +199,7 @@ const UserStateArea = styled.div<{ isShow: boolean | null; userStateKey: t.UserS
   border-left: solid 0.5vh gray;
   box-shadow: 0 3px 5px rgb(0 0 0 / 22%);
 `
+//現在接続しているユーザー数を表示
 const ConnectCountLabel = styled.label`
   position: fixed;
   top: 1vh;
@@ -213,11 +230,12 @@ const Home: NextPage = () => {
   const socket = useRef<Socket>(null!)
 
   useEffect(() => {
+    //サーバーと接続
     socket.current = io(URL, {
       reconnection: false,
       withCredentials: true,
     })
-
+    //サーバーから送られる情報の受け取り
     socket.current.on('gameInfo', (data) => {
       for (const key of Object.keys(gameInfo)) {
         if (key in data) {
@@ -237,9 +255,11 @@ const Home: NextPage = () => {
       const { newConnectCount }: { newConnectCount: number } = data
       setConnectCount(newConnectCount)
     })
+    //サーバーと接続できた時の処理
     socket.current.on('connect', () => {
       setIsSocketCond(true)
     })
+    //サーバーと接続できなかった時の処理
     socket.current.on('connect_error', () => {
       setIsSocketCond(false)
       window.alert('サーバーに接続できませんでした。\nもう一度読み込みなおしてください。')
@@ -250,7 +270,9 @@ const Home: NextPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  //オセロ石を置く処理
   const putDisc = (x: number, y: number, disc: t.Disc) => {
+    //クリックしたマスが置ける場所であり、自分の手番の時
     if (disc === 8) {
       if (
         (gameInfo.turnColor === 'Black' && userState === 'PLBlack') ||
@@ -260,7 +282,7 @@ const Home: NextPage = () => {
       }
     }
   }
-
+  //ゲームの状態に応じて対応する連装配列のkeyを返す
   const getViewandEmitKey = (GState: t.GameState, UState: t.UserState): t.ViewandEmitKey => {
     let key: t.ViewandEmitKey = ''
     switch (GState) {
@@ -278,6 +300,7 @@ const Home: NextPage = () => {
     return key
   }
 
+  //ゲームの状態に応じたボタンの処理を行う
   const btnCmd = (GState: t.GameState, UState: t.UserState) => {
     const emitCmd: { [key: string]: { [key: string]: string } } = {
       entry: {
@@ -307,6 +330,7 @@ const Home: NextPage = () => {
     }
   }
 
+  //ゲームの状態に対応したボタンのLabelや色を返す
   const getViewConfig = (GState: t.GameState, UState: t.UserState) => {
     const view_Config: { [key: string]: { [key: string]: string } } = {
       entry: {
@@ -338,7 +362,7 @@ const Home: NextPage = () => {
       btnColor: '',
     }
   }
-
+  //接続完了時にモーダルを取り除く処理
   const registerUserInfo = () => {
     setIsClickedStart(true)
     setIsShowModal(false)
